@@ -1,0 +1,12 @@
+"svn" + username = new user with name
+"svc" + channel = user at index changed to new channel
+"svt" = disconnect user
+"msg" + message = send message to given channel
+
+In Member List:
+0 = General Chat
+1 = 1st user in arraylist in users
+2 = 2nd
+3 = yeah
+
+give chat history
