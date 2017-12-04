@@ -20,7 +20,7 @@ class Server {
     static boolean running = true;  // controls if the server is accepting clients
     static List<User> users = Collections.synchronizedList(new ArrayList<>()); // syncronized list of users
     static List<ConnectionHandler> connectionHandlers = Collections.synchronizedList(new ArrayList<>());
-    private static final int COMMAND_LEN = 4;
+    private static final int COMMAND_LEN = 3;
     private static final String COMMAND_QUIT = "svt";
     private static final String COMMAND_NEW = "svn";
     private static final String COMMAND_CHANNEL = "svc";
@@ -64,7 +64,7 @@ class Server {
 
         try {
             serverSock = new ServerSocket(5000);  //assigns an port to the server
-            serverSock.setSoTimeout(5000);  //5 second timeout
+            serverSock.setSoTimeout(25000);  //5 second timeout
             while(running) {  //this loops to accept multiple clients
                 client = serverSock.accept();  //wait for connection
                 System.out.println("Client connected");
