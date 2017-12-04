@@ -1,32 +1,57 @@
-/* [ChatProgramServer.java]
- * Description: This is an example of a chat server.
- * The program  waits for a client and accepts a message.
- * It then responds to the message and quits.
- * This server demonstrates how to employ multithreading to accepts multiple clients
- * @author Mangat
- * @version 1.0a
+/**
+ * [Server.java]
  */
 
 //imports for network communication
-import java.io.*;
-import java.net.*;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 class Server {
 
-    ServerSocket serverSock;// server socket for connection
+    static ServerSocket serverSock;// server socket for connection
     static boolean running = true;  // controls if the server is accepting clients
     static List<User> users = Collections.synchronizedList(new ArrayList<>()); // syncronized list of users
+    static List<ConnectionHandler> connectionHandlers = Collections.synchronizedList(new ArrayList<>());
     private static final int COMMAND_LEN = 4;
-    private static final String COMMAND_QUIT = "QUT";// add more commands later
+    private static final String COMMAND_QUIT = "svt";
+    private static final String COMMAND_NEW = "svn";
+    private static final String COMMAND_CHANNEL = "svc";
+    private static final String COMMAND_MSG = "msg";
 
     /** Main
      * @param args parameters from command line
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException{
         new Server().go(); //start the server
+        BufferedReader serverInput = new BufferedReader(new InputStreamReader(System.in));
+        while(true){
+            String serverIn = serverInput.readLine();
+            if (serverIn.equals("close")){
+                for (int i = 0; i < connectionHandlers.size(); i++) {
+                    connectionHandlers.get(i).write("~~SERVER CLOSING IN 20 SECONDS~~");
+                }
+                try {
+                    Thread.sleep(20000);
+                }catch (InterruptedException e){
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+                for (int i = 0; i < connectionHandlers.size(); i++) {
+                    connectionHandlers.get(i).close();
+                }
+
+                serverSock.close();
+                System.exit(1);
+            }
+        }
     }
 
     /** Go
@@ -47,7 +72,9 @@ class Server {
                 //Also: Queues are good tools to buffer incoming/outgoing messages
                 User user = new User();
                 users.add(user);
-                Thread t = new Thread(new ConnectionHandler(client, user)); //create a thread for the new client and pass in the socket
+                ConnectionHandler connect = new ConnectionHandler(client,user);
+                connectionHandlers.add(connect);
+                Thread t = new Thread(connect); //create a thread for the new client and pass in the socket
                 t.start(); //start the new thread
             }
         }catch(Exception e) {
@@ -93,45 +120,65 @@ class Server {
         public void run() {
 
             //Get a message from the client
-            String msg="";
+            String userInput="";
 
             //Get a message from the client
             while(running) {  // loop unit a message is received
                 try {
-                    if (input.ready()) { //check for an incoming messge
-                        msg = input.readLine();  //get a message from the client
-                        // Commands: HELLO, MSG, QUIT
-                        // Format: COMMAND Something
-                        // e.g. HELLO Josh
-                        // MSG Hello World
-                        // QUIT
+                    if (this.input.ready()) { //check for an incoming messge
+                        userInput = this.input.readLine();  //get a message from the client
 
-                        System.out.println("msg from client: " + msg);
+                        System.out.println("msg from client: " + userInput);
 
-                        if (msg.startsWith(COMMAND_QUIT)) {
+                        if (userInput.startsWith(COMMAND_QUIT)) {
                             running = false; //stop receving messages
-                        } else if(msg.startsWith("HELLO")){
-                            user.setName(msg.substring(COMMAND_LEN));
+                        } else if(userInput.startsWith(COMMAND_NEW)){
+                            user.setName(userInput.substring(COMMAND_LEN));
+                        } else if (userInput.startsWith(COMMAND_CHANNEL)){
+                            user.setChannel(Integer.parseInt(userInput.substring(COMMAND_LEN)));
+                        } else if (userInput.startsWith(COMMAND_MSG)){
+                            String msg = userInput.substring(COMMAND_LEN);
+                            writeToUsers(msg, user.getChannel());
+                        }else{
+                            output.println("err Command Not Available");
+                            output.flush();
                         }
+
                     }
                 }catch (IOException e) {
-                    System.out.println("Failed to receive msg from the client");
+                    System.out.println("Failed to receive userInput from the client");
                     e.printStackTrace();
                 }
             }
 
             //Send a message to the client
-            output.println("We got your message! Goodbye.");
-            output.flush();
+            users.remove(user);
 
+            close();
+        } // end of run()
+
+        private void writeToUsers(String msg, int channel){
+            for (int i = 0; i < connectionHandlers.size(); i++) {
+                if (connectionHandlers.get(i).user.getChannel() == channel){
+                    connectionHandlers.get(i).write(msg);
+                }
+            }
+        }
+
+        private void write(String msg){
+            output.println(msg);
+            output.flush();
+        }
+
+        private void close(){
             //close the socket
             try {
-                input.close();
+                this.input.close();
                 output.close();
                 client.close();
             }catch (Exception e) {
                 System.out.println("Failed to close socket");
             }
-        } // end of run()
+        }
     } //end of inner class
 } //end of Server class
