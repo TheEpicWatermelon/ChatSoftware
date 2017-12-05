@@ -1,7 +1,7 @@
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
-
+import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
 import java.awt.Font;
 import javax.swing.JPanel;
@@ -21,33 +21,42 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.awt.event.ActionEvent;
 import javax.swing.ListSelectionModel;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.ListSelectionEvent;
 
-/*
+/**
  * Client.java
  * Window for client interactions
  * Aaron Ng
  * Nov 30, 2017
  */
 public class Client extends JFrame {
+	// Swing Components
 	private JPanel panel;
 	private JLabel lblTitle;
-	private JTextArea txtAreaChat;
 	private JScrollPane scrollPaneChat;
 	private JTextArea txtAreaMessage;
 	private JButton btnSend;
+	private JButton btnDisconnect;
 	private JLabel lblChatList;
 	private JScrollPane scrollPaneMembers;
 	private JList <String> listMembers;
+	private ArrayList <JTextArea> txtArea;
+	// Server Components
 	private Socket mySocket;
 	private BufferedReader input;
 	private PrintWriter output;
 	private String name;
-	private JButton btnDisconnect;
-	public boolean running;
+	// Constants and Runtime Variables
+	private boolean running;
+	private int channelIndex;
+	private static final String COMMAND_QUIT = "svt";
+	private static final String COMMAND_START = "svn";
+	private static final String COMMAND_SWITCH = "svc";
+	private static final String COMMAND_MESSAGE = "msg";
 
 	/*
 	 * Client
@@ -62,15 +71,16 @@ public class Client extends JFrame {
 		name = n;
 		initComponents(); // Method to create UI
 		createEvents(); // Method to create actionListeners
-		output.println("svn" + name);
+		output.println(COMMAND_START + name); // Give server the client name
 		output.flush();
 		running = true;
-		Thread listen = new Thread(new MessageReciever());
+		Thread listen = new Thread(new MessageReciever()); // Start listening for messages from the server
 		listen.start();
+		(new Thread(new ChatHistory())).start(); // Get chat history for general chat from the server
 
 	} // End Client constructor
 
-	/*
+	/**
 	 * createEvents
 	 * Method to create actionListeners
 	 * @param none
@@ -79,26 +89,27 @@ public class Client extends JFrame {
 	private void createEvents() {
 		btnSend.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				output.println("msg" + txtAreaMessage.getText());
-				output.flush();
-			}
+				if (!(txtAreaMessage.getText()).equals("")) { // Only send message if there is text inside the text area
+					output.println(COMMAND_MESSAGE + txtAreaMessage.getText());
+					output.flush();
+					txtAreaMessage.setText("");
+				} // End if
+			} // End actionPerformed method
 		});
 		listMembers.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent arg0) {
 				if (!listMembers.getValueIsAdjusting()) {
-					output.println("svc" + listMembers.getSelectedIndex());
+					output.println(COMMAND_SWITCH + listMembers.getSelectedIndex());
 					output.flush();
 					lblTitle.setText(listMembers.getSelectedValue());
-					if (listMembers.getSelectedIndex() == 0) {
-						(new Thread(new ChatHistory())).start();
-					} // End if
 				} // End if
 			}
 		});
 		btnDisconnect.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				output.println("svt");
+				output.println(COMMAND_QUIT);
 				output.flush();
+				running = false;
 				try {
 					input.close();
 					output.close();
@@ -111,7 +122,7 @@ public class Client extends JFrame {
 		});
 		this.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent event) {
-				output.println("svt");
+				output.println(COMMAND_QUIT);
 				output.flush();
 				running = false;
 				try {
@@ -126,7 +137,7 @@ public class Client extends JFrame {
 		});
 	} // End createEvents method
 
-	/*
+	/**
 	 * initComponents
 	 * Initialize swing components for UI
 	 * @param none
@@ -135,39 +146,31 @@ public class Client extends JFrame {
 	private void initComponents() {
 
 		this.setSize(800, 600);
+		this.setLocationRelativeTo(null);
+		this.setVisible(true);
+		this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		
 		lblTitle = new JLabel("General Chat");
 		lblTitle.setFont(new Font("Arial", Font.PLAIN, 20));
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
-		this.setVisible(true);
-		this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		panel = new JPanel();
-
 		lblChatList = new JLabel("Chat List");
 		lblChatList.setFont(new Font("Arial", Font.PLAIN, 16));
 		lblChatList.setHorizontalAlignment(SwingConstants.CENTER);
 
-		scrollPaneMembers = new JScrollPane();
-		scrollPaneMembers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-
-		txtAreaMessage = new JTextArea();
-
+		txtAreaMessage = new JTextArea("");
 		btnSend = new JButton("Send");
-		btnSend.setFont(new Font("Arial Black", Font.PLAIN, 16));		
+		btnSend.setFont(new Font("Arial Black", Font.PLAIN, 16));  
 		btnDisconnect = new JButton("Disconnect");
 		btnDisconnect.setFont(new Font("Arial", Font.PLAIN, 12));
-
-		listMembers = new JList(new String[] {"General", "1", "2", "3", "4", "5", "6"});
+		
+		scrollPaneMembers = new JScrollPane();
+		scrollPaneMembers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		listMembers = new JList(new String[] {"General", "Aaron"});
 		scrollPaneMembers.setViewportView(listMembers);
 		listMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-		txtAreaChat = new JTextArea();
-		txtAreaChat.setLineWrap(true);
-		txtAreaChat.setWrapStyleWord(true);
-		txtAreaChat.setEditable(false);
 		scrollPaneChat = new JScrollPane();
 		scrollPaneChat.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		scrollPaneChat.setViewportBorder(new LineBorder(new Color(0, 0, 0)));
-		scrollPaneChat.add(txtAreaChat);
 
 		JLabel lblServerIp = new JLabel("Server IP:");
 		JLabel lblServerIP2 = new JLabel(mySocket.getLocalAddress().toString().substring(1));
@@ -175,7 +178,8 @@ public class Client extends JFrame {
 		JLabel lblPort2 = new JLabel(Integer.toString(mySocket.getPort()));
 		JLabel lblMembers = new JLabel("Members: ");
 		JLabel lblMembers2 = new JLabel(Integer.toString(listMembers.getModel().getSize()-1));
-
+		
+		panel = new JPanel();
 		GroupLayout gl_panel = new GroupLayout(panel);
 		gl_panel.setHorizontalGroup(
 				gl_panel.createParallelGroup(Alignment.LEADING)
@@ -272,11 +276,20 @@ public class Client extends JFrame {
 												.addComponent(btnSend, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE))))
 						.addContainerGap())
 				);
+		
+		channelIndex = 0;
+		txtArea = new ArrayList <JTextArea>();
+		txtArea.add(new JTextArea(""));
+		txtArea.get(channelIndex).setEditable(false);
+		txtArea.get(channelIndex).setFont(new Font("Century Gothic", Font.PLAIN, 16));
+		txtArea.get(channelIndex).setWrapStyleWord(true);
+		txtArea.get(channelIndex).setLineWrap(true);
+		scrollPaneChat.setViewportView(txtArea.get(channelIndex));
 		getContentPane().setBackground(new Color(142, 185, 255));
 		getContentPane().setLayout(groupLayout);
 	} // End initComponents method
 
-	/*
+	/**
 	 * MessageReciever.java
 	 * Inner class used to listen to server sent messages
 	 * Aaron Ng
@@ -285,7 +298,7 @@ public class Client extends JFrame {
 	class MessageReciever implements Runnable{
 
 		MessageReciever(){} // End MessageReciever constructor
-		/*
+		/**
 		 * run
 		 * Method for listening to received messages
 		 * @param none
@@ -295,10 +308,25 @@ public class Client extends JFrame {
 			while(running) {
 				try {
 					if (input.ready()) {
-						String msg;          
+						String msg;  
 						msg = input.readLine();
-						txtAreaChat.append(msg);
-						System.out.println("msg from server: " + msg);   
+						if (msg.startsWith(COMMAND_MESSAGE)) { // Append message to respective text area
+							msg = msg.substring(3);
+							channelIndex = Integer.parseInt(msg.substring(0, msg.indexOf("n")));
+							txtArea.get(channelIndex).append("\n" + msg.substring(msg.indexOf("n") + 1));
+							System.out.println("msg from server: " + msg);
+						}else if (msg.equals(COMMAND_QUIT)) { // Server shut down
+							running = false;
+							try {
+								input.close();
+								output.close();
+								mySocket.close();
+							}catch(Exception e) {
+								System.out.println("Failed to close");
+							}
+							JOptionPane.showMessageDialog(null, "Server has been shut down", "Server Down", JOptionPane.ERROR_MESSAGE);
+							System.exit(0);
+						} // End if
 					} // End if
 				}catch (IOException e) { 
 					System.out.println("Failed to receive msg from the server");
@@ -308,7 +336,7 @@ public class Client extends JFrame {
 		} // End run method
 	} // End MessageReciever class
 
-	/*
+	/**
 	 * ChatHistory.java
 	 * Inner class used to receive chat history for general chat
 	 * Aaron Ng
@@ -317,7 +345,7 @@ public class Client extends JFrame {
 	class ChatHistory implements Runnable{
 		boolean going = true;
 		ChatHistory(){} // End ChatHistory Constructor
-		/*
+		/**
 		 * run
 		 * Method for listening to received messages
 		 * @param none
@@ -329,7 +357,7 @@ public class Client extends JFrame {
 					if (input.ready()) {
 						String msg;          
 						msg = input.readLine();
-						txtAreaChat.setText(msg);
+						txtArea.get(0).setText(msg);
 						System.out.println("msg from server: " + msg);
 						going = false;
 					} // End if
@@ -340,5 +368,4 @@ public class Client extends JFrame {
 			} // End while loop
 		} // End run method
 	} // End ChatHistory class
-
 } // End Client class
