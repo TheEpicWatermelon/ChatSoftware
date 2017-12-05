@@ -1,12 +1,13 @@
-"svn" + username = new user with name
-"svc" + channel = user at index changed to new channel
-"svt" = disconnect user
-"msg" + message = send message to given channel
+"svn" + username			= Client to server; new user with username has connected
+"cnu" + name				= Server sent message: new client of "name" has connected (Client writes connection message)
+"svt"					= Client to server; client has left || Server to client; server shut down
+"cul" + number				= Server to client; Client(number) has left; remove them from member list
+"msg" + sender number + "n" + message	= server to client; message to general chat
+"pmg" + sender number + "n" + message	= server to client; pm to this sender
 
 In Member List:
 0 = General Chat
-1 = 1st user in arraylist in users
-2 = 2nd
-3 = yeah
+Aaron(1) = 1st user in arraylist in users
+Sasha(2) = 2nd
+Sombody else(3) = 3rd
 
-give chat history
