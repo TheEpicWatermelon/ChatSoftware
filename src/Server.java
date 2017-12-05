@@ -3,7 +3,6 @@
  */
 
 //imports for network communication
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -23,35 +22,21 @@ class Server {
     private static final int COMMAND_LEN = 3;
     private static final String COMMAND_QUIT = "svt";
     private static final String COMMAND_NEW = "svn";
-    private static final String COMMAND_CHANNEL = "svc";
     private static final String COMMAND_MSG = "msg";
+    private static final String NEW_USER_COMMAND = "cnu";
+    private static final String PRIVATE_MSG_COMMAND = "pmg";
+    private static final String USER_LEAVE_MSG = "cul";
+    private static Gui gui;
+    private volatile static String inputText;
 
     /** Main
      * @param args parameters from command line
      */
     public static void main(String[] args) throws IOException{
+        gui = new Gui();
+        Thread console = new Thread(new consoleThread());
+        console.start();
         new Server().go(); //start the server
-        BufferedReader serverInput = new BufferedReader(new InputStreamReader(System.in));
-        while(true){
-            String serverIn = serverInput.readLine();
-            if (serverIn.equals("close")){
-                for (int i = 0; i < connectionHandlers.size(); i++) {
-                    connectionHandlers.get(i).write("~~SERVER CLOSING IN 20 SECONDS~~");
-                }
-                try {
-                    Thread.sleep(20000);
-                }catch (InterruptedException e){
-                    e.printStackTrace();
-                    System.exit(1);
-                }
-                for (int i = 0; i < connectionHandlers.size(); i++) {
-                    connectionHandlers.get(i).close();
-                }
-
-                serverSock.close();
-                System.exit(1);
-            }
-        }
     }
 
     /** Go
@@ -64,10 +49,11 @@ class Server {
 
         try {
             serverSock = new ServerSocket(5000);  //assigns an port to the server
-            serverSock.setSoTimeout(25000);  //5 second timeout
+            //serverSock.setSoTimeout(25000);  //5 second timeout
             while(running) {  //this loops to accept multiple clients
                 client = serverSock.accept();  //wait for connection
                 System.out.println("Client connected");
+                gui.appendToConsole("Client Connected");
                 //Note: you might want to keep references to all clients if you plan to broadcast messages
                 //Also: Queues are good tools to buffer incoming/outgoing messages
                 User user = new User();
@@ -134,11 +120,16 @@ class Server {
                             running = false; //stop receving messages
                         } else if(userInput.startsWith(COMMAND_NEW)){
                             user.setName(userInput.substring(COMMAND_LEN));
-                        } else if (userInput.startsWith(COMMAND_CHANNEL)){
-                            user.setChannel(Integer.parseInt(userInput.substring(COMMAND_LEN)));
+                            user.setListNum(connectionHandlers.size()+1);
+                            giveUsers();
                         } else if (userInput.startsWith(COMMAND_MSG)){
                             String msg = userInput.substring(COMMAND_LEN);
-                            writeToUsers(msg, user.getChannel());
+                            int nIndex = userInput.indexOf('n');
+                            // get the receiver's user number
+                            int receiverNum = Integer.parseInt(msg.substring(0,nIndex));
+                            msg.substring(nIndex+1);
+                            writeToUsers(msg, receiverNum, user.getListNum());
+
                         }else{
                             output.println("err Command Not Available");
                             output.flush();
@@ -151,16 +142,45 @@ class Server {
                 }
             }
 
+
+            // send to all users that the user left
+            sendUserLeft(user.getListNum());
             //Send a message to the client
             users.remove(user);
 
             close();
         } // end of run()
 
-        private void writeToUsers(String msg, int channel){
+        private void sendUserLeft(int listNum) {
+            String out = USER_LEAVE_MSG + listNum;
+            writeToUsers(out,0,listNum);
+        }
+
+        private void giveUsers() {
+            StringBuilder string = new StringBuilder();
+
+            string.append(NEW_USER_COMMAND);
             for (int i = 0; i < connectionHandlers.size(); i++) {
-                if (connectionHandlers.get(i).user.getChannel() == channel){
-                    connectionHandlers.get(i).write(msg);
+                string.append(connectionHandlers.get(i).user.getName());
+                if (i != connectionHandlers.size()-1) {
+                    string.append(',');
+                }
+            }
+            writeToUsers(string.toString(), 0,user.getListNum());
+        }
+
+        private void writeToUsers(String msg, int receiver, int sender){
+            if (receiver == 0){
+                String out = COMMAND_MSG + sender + 'n' + msg;
+                for (int i = 0; i < connectionHandlers.size(); i++) {
+                    connectionHandlers.get(i).write(out);
+                }
+            }else {
+                for (int i = 0; i < connectionHandlers.size(); i++) {
+                    String out = PRIVATE_MSG_COMMAND + sender + 'n' + msg;
+                    if (connectionHandlers.get(i).user.getListNum() == sender || connectionHandlers.get(i).user.getListNum() == receiver) {
+                        connectionHandlers.get(i).write(msg);
+                    }
                 }
             }
         }
@@ -181,4 +201,43 @@ class Server {
             }
         }
     } //end of inner class
+
+
+    private static class consoleThread implements Runnable {
+        volatile String serverIn;
+
+        @Override
+        public void run() {
+            while (true) {
+                serverIn = inputText;
+                if (serverIn == null){
+                    continue;
+                }
+                if (serverIn.equals("close")) {
+                    for (int i = 0; i < connectionHandlers.size(); i++) {
+                        connectionHandlers.get(i).write("~~SERVER CLOSING IN 20 SECONDS~~");
+                        gui.appendToConsole("Shutting down server...");
+                    }
+                    try {
+                        Thread.sleep(20000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        System.exit(1);
+                    }
+                    for (int i = 0; i < connectionHandlers.size(); i++) {
+                        connectionHandlers.get(i).close();
+                    }
+
+                    try {
+                        serverSock.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        System.exit(1);
+                        System.exit(1);
+                    }
+                }
+            }
+        }
+    }
+
 } //end of Server class
