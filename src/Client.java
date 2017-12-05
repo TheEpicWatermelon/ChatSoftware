@@ -35,7 +35,7 @@ import javax.swing.event.ListSelectionEvent;
  */
 public class Client extends JFrame {
 	// Swing Components
-	private JPanel panel;
+	private JPanel pnlSidebar;
 	private JLabel lblTitle;
 	private JScrollPane scrollPaneChat;
 	private JTextArea txtAreaMessage;
@@ -52,11 +52,14 @@ public class Client extends JFrame {
 	private String name;
 	// Constants and Runtime Variables
 	private boolean running;
+	private int userNum;
 	private int channelIndex;
-	private static final String COMMAND_QUIT = "svt";
 	private static final String COMMAND_START = "svn";
-	private static final String COMMAND_SWITCH = "svc";
+	private static final String NEW_USER_COMMAND = "cnu";
+	private static final String COMMAND_QUIT = "svt";
+	private static final String COMMAND_USER_LEAVE = "cul";
 	private static final String COMMAND_MESSAGE = "msg";
+	private static final String COMMAND_PM = "pmg";
 
 	/*
 	 * Client
@@ -99,9 +102,11 @@ public class Client extends JFrame {
 		listMembers.addListSelectionListener(new ListSelectionListener() {
 			public void valueChanged(ListSelectionEvent arg0) {
 				if (!listMembers.getValueIsAdjusting()) {
-					output.println(COMMAND_SWITCH + listMembers.getSelectedIndex());
-					output.flush();
-					lblTitle.setText(listMembers.getSelectedValue());
+					if (listMembers.getSelectedIndex() != userNum) {
+						channelIndex = listMembers.getSelectedIndex();
+						scrollPaneChat.setViewportView(txtArea.get(channelIndex));
+						lblTitle.setText(listMembers.getSelectedValue());
+					} // End if
 				} // End if
 			}
 		});
@@ -165,7 +170,8 @@ public class Client extends JFrame {
 		
 		scrollPaneMembers = new JScrollPane();
 		scrollPaneMembers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		listMembers = new JList(new String[] {"General", "Aaron"});
+		listMembers = new JList(new String[] {"Gen"});
+		System.out.println(listMembers.getModel().getSize());
 		scrollPaneMembers.setViewportView(listMembers);
 		listMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPaneChat = new JScrollPane();
@@ -179,64 +185,64 @@ public class Client extends JFrame {
 		JLabel lblMembers = new JLabel("Members: ");
 		JLabel lblMembers2 = new JLabel(Integer.toString(listMembers.getModel().getSize()-1));
 		
-		panel = new JPanel();
-		GroupLayout gl_panel = new GroupLayout(panel);
-		gl_panel.setHorizontalGroup(
-				gl_panel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_panel.createSequentialGroup()
-						.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
-								.addGroup(Alignment.TRAILING, gl_panel.createParallelGroup(Alignment.TRAILING)
-										.addGroup(Alignment.LEADING, gl_panel.createSequentialGroup()
+		pnlSidebar = new JPanel();
+		GroupLayout gl_pnlSidebar = new GroupLayout(pnlSidebar);
+		gl_pnlSidebar.setHorizontalGroup(
+				gl_pnlSidebar.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_pnlSidebar.createSequentialGroup()
+						.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.LEADING)
+								.addGroup(Alignment.TRAILING, gl_pnlSidebar.createParallelGroup(Alignment.TRAILING)
+										.addGroup(Alignment.LEADING, gl_pnlSidebar.createSequentialGroup()
 												.addContainerGap()
 												.addComponent(scrollPaneMembers, GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE))
-										.addGroup(gl_panel.createSequentialGroup()
+										.addGroup(gl_pnlSidebar.createSequentialGroup()
 												.addGap(18)
 												.addComponent(lblChatList, GroupLayout.DEFAULT_SIZE, GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)))
-								.addGroup(gl_panel.createSequentialGroup()
+								.addGroup(gl_pnlSidebar.createSequentialGroup()
 										.addContainerGap()
 										.addComponent(lblServerIp)
 										.addPreferredGap(ComponentPlacement.UNRELATED)
 										.addComponent(lblServerIP2))
-								.addGroup(gl_panel.createSequentialGroup()
+								.addGroup(gl_pnlSidebar.createSequentialGroup()
 										.addContainerGap()
-										.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+										.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.LEADING)
 												.addComponent(lblMembers)
 												.addComponent(lblPort))
 										.addPreferredGap(ComponentPlacement.UNRELATED)
-										.addGroup(gl_panel.createParallelGroup(Alignment.LEADING)
+										.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.LEADING)
 												.addComponent(lblPort2)
 												.addComponent(lblMembers2))))
 						.addContainerGap())
 				);
-		gl_panel.setVerticalGroup(
-				gl_panel.createParallelGroup(Alignment.LEADING)
-				.addGroup(gl_panel.createSequentialGroup()
+		gl_pnlSidebar.setVerticalGroup(
+				gl_pnlSidebar.createParallelGroup(Alignment.LEADING)
+				.addGroup(gl_pnlSidebar.createSequentialGroup()
 						.addGap(18)
 						.addComponent(lblChatList)
 						.addGap(18)
 						.addComponent(scrollPaneMembers, GroupLayout.PREFERRED_SIZE, 262, GroupLayout.PREFERRED_SIZE)
 						.addGap(18)
-						.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.BASELINE)
 								.addComponent(lblServerIp)
 								.addComponent(lblServerIP2))
 						.addGap(18)
-						.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.BASELINE)
 								.addComponent(lblPort)
 								.addComponent(lblPort2))
 						.addGap(18)
-						.addGroup(gl_panel.createParallelGroup(Alignment.BASELINE)
+						.addGroup(gl_pnlSidebar.createParallelGroup(Alignment.BASELINE)
 								.addComponent(lblMembers)
 								.addComponent(lblMembers2))
 						.addContainerGap(85, Short.MAX_VALUE))
 				);
-		panel.setLayout(gl_panel);
+		pnlSidebar.setLayout(gl_pnlSidebar);
 
 		GroupLayout groupLayout = new GroupLayout(getContentPane());
 		groupLayout.setHorizontalGroup(
 				groupLayout.createParallelGroup(Alignment.LEADING)
 				.addGroup(groupLayout.createSequentialGroup()
 						.addContainerGap()
-						.addComponent(panel, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
+						.addComponent(pnlSidebar, GroupLayout.PREFERRED_SIZE, 166, GroupLayout.PREFERRED_SIZE)
 						.addPreferredGap(ComponentPlacement.RELATED)
 						.addGroup(groupLayout.createParallelGroup(Alignment.LEADING)
 								.addGroup(groupLayout.createSequentialGroup()
@@ -267,7 +273,7 @@ public class Client extends JFrame {
 										.addComponent(btnDisconnect)))
 						.addPreferredGap(ComponentPlacement.UNRELATED)
 						.addGroup(groupLayout.createParallelGroup(Alignment.TRAILING, false)
-								.addComponent(panel, 0, 0, Short.MAX_VALUE)
+								.addComponent(pnlSidebar, 0, 0, Short.MAX_VALUE)
 								.addGroup(groupLayout.createSequentialGroup()
 										.addComponent(scrollPaneChat, GroupLayout.PREFERRED_SIZE, 413, GroupLayout.PREFERRED_SIZE)
 										.addGap(18)
@@ -296,7 +302,7 @@ public class Client extends JFrame {
 	 * Dec 1, 2017
 	 */
 	class MessageReciever implements Runnable{
-
+		boolean firstCNU = true;
 		MessageReciever(){} // End MessageReciever constructor
 		/**
 		 * run
@@ -311,10 +317,11 @@ public class Client extends JFrame {
 						String msg;  
 						msg = input.readLine();
 						if (msg.startsWith(COMMAND_MESSAGE)) { // Append message to respective text area
-							msg = msg.substring(3);
-							channelIndex = Integer.parseInt(msg.substring(0, msg.indexOf("n")));
-							txtArea.get(channelIndex).append("\n" + msg.substring(msg.indexOf("n") + 1));
 							System.out.println("msg from server: " + msg);
+							msg = msg.substring(3);
+							msg = listMembers.getModel().getElementAt(Integer.parseInt(msg.substring(0, msg.indexOf("n")))) + ": " + msg;
+							txtArea.get(0).append("\n" + msg);
+							System.out.println("msg to general: " + msg);
 						}else if (msg.equals(COMMAND_QUIT)) { // Server shut down
 							running = false;
 							try {
@@ -326,6 +333,44 @@ public class Client extends JFrame {
 							}
 							JOptionPane.showMessageDialog(null, "Server has been shut down", "Server Down", JOptionPane.ERROR_MESSAGE);
 							System.exit(0);
+						}else if (msg.startsWith(NEW_USER_COMMAND)){ // New user has connected; Add their name to list
+							msg = msg.substring(3);
+							if(firstCNU) { // If user has just connected, send full member list
+								ArrayList <String> list = new ArrayList <String> ();
+								list.add("General");
+								while(msg.indexOf(",") != -1) { // Loop through to get all clients
+									txtArea.add(new JTextArea(""));
+									list.add(msg.substring(0, msg.indexOf(",")));
+									msg = msg.substring(msg.indexOf(",") + 1);
+								} // End while loop
+								list.add(msg);
+								txtArea.add(new JTextArea(""));
+								String [] tmp = list.toArray(new String [list.size()]);
+								listMembers =  new JList(tmp);
+								userNum = tmp.length -1;
+							}else { // Else add 1 new member to bottom of list
+								String [] tmp = new String [listMembers.getModel().getSize() + 1];
+								for (int i = 0; i < listMembers.getModel().getSize(); i++) {
+									tmp[i] = listMembers.getModel().getElementAt(i);
+								} // End for loop
+								tmp[tmp.length - 1] = msg;
+								listMembers = new JList(tmp);
+								txtArea.add(new JTextArea(""));	
+							} // End if
+						}else if (msg.startsWith(COMMAND_USER_LEAVE)){ // User at index has disconnected, remove them from list
+							int index = Integer.parseInt(msg.substring(3)); // Get index of left user
+							txtArea.remove(index);// Remove user's chat box from txtArea ArrayList
+							String [] tmp = new String[listMembers.getModel().getSize() - 1];
+							for (int i = 0; i < listMembers.getModel().getSize(); i++) {
+								if (i != index) {
+									tmp[i] = listMembers.getModel().getElementAt(i);
+								} // End if
+							} // End for loop
+						}else if (msg.startsWith(COMMAND_PM)){
+							System.out.println("msg from server: " + msg);
+							msg = msg.substring(3);
+							int index = Integer.parseInt(msg.substring(msg.indexOf("n")));
+							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + msg.substring(msg.indexOf("n") + 1));
 						} // End if
 					} // End if
 				}catch (IOException e) { 
