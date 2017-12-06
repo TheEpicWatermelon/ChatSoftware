@@ -26,20 +26,21 @@ public class Gui extends JFrame {
 
         // create Panel
         mainPanel = new JPanel();
-        mainPanel.setLayout(new GridLayout(0,1, 0, 50));
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.PAGE_AXIS));
+
 
         // create top Panel
         topPanel = new JPanel();
-        topPanel.setLayout(new FlowLayout());
 
-        console = new JTextArea("~Server Start", 20,20);
+
+        console = new JTextArea("~Server Start", 20,33);
         scrollPane = new JScrollPane(console);
 
         console.setEditable(false);
         console.setLineWrap(true);
         console.setWrapStyleWord(true);
 
-        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 
         topPanel.add(scrollPane);
@@ -68,11 +69,18 @@ public class Gui extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             inputText = consoleInput.getText();
+            Server.serverIn = inputText;
+            appendToConsole(inputText);
+            inputText = null;
+            System.out.println("Printed");
         }
     }
 
     public void appendToConsole(String text){
-        console.append(text);
+        console.append("\n" +text);
         this.repaint();
+        this.revalidate();
+        JScrollBar vertical = scrollPane.getVerticalScrollBar();
+        vertical.setValue( vertical.getMaximum() );
     }
 }

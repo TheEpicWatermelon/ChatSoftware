@@ -1,3 +1,5 @@
+import java.util.List;
+
 /**
  * Created by sasha on 12/2/2017.
  */
@@ -20,5 +22,11 @@ public class User {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public static void updateNums(List<User> users){
+        for (int i = 1; i <= users.size(); i++) {
+            users.get(i).setListNum(i);
+        }
     }
 }
