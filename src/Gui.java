@@ -69,6 +69,7 @@ public class Gui extends JFrame {
         @Override
         public void actionPerformed(ActionEvent e) {
             inputText = consoleInput.getText();
+            consoleInput.setText("");
             Server.serverIn = inputText;
             appendToConsole(inputText);
             inputText = null;

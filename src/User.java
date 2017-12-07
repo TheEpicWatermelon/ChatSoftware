@@ -24,9 +24,4 @@ public class User {
         this.name = name;
     }
 
-    public static void updateNums(List<User> users){
-        for (int i = 1; i <= users.size(); i++) {
-            users.get(i).setListNum(i);
-        }
-    }
 }
