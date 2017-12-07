@@ -60,6 +60,9 @@ public class Client extends JFrame {
 	private static final String COMMAND_USER_LEAVE = "cul";
 	private static final String COMMAND_MESSAGE = "msg";
 	private static final String COMMAND_PM = "pmg";
+	private static final String SERVER_MSG = "smg";
+	private static final String KICK_COMMAND = "kck";
+	private JLabel lblMembers2;
 
 	/*
 	 * Client
@@ -79,8 +82,8 @@ public class Client extends JFrame {
 		running = true;
 		Thread listen = new Thread(new MessageReciever()); // Start listening for messages from the server
 		listen.start();
-		(new Thread(new ChatHistory())).start(); // Get chat history for general chat from the server
-
+//		(new Thread(new ChatHistory())).start(); // Get chat history for general chat from the server
+//		(new Thread(new ChatLimiter())).start(); // Limit all chat boxes to 5000 characters
 	} // End Client constructor
 
 	/**
@@ -93,7 +96,7 @@ public class Client extends JFrame {
 		btnSend.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				if (!(txtAreaMessage.getText()).equals("")) { // Only send message if there is text inside the text area
-					output.println(COMMAND_MESSAGE + txtAreaMessage.getText());
+					output.println(COMMAND_MESSAGE + channelIndex + "n" + txtAreaMessage.getText());
 					output.flush();
 					txtAreaMessage.setText("");
 				} // End if
@@ -171,7 +174,6 @@ public class Client extends JFrame {
 		scrollPaneMembers = new JScrollPane();
 		scrollPaneMembers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		listMembers = new JList(new String[] {"Gen"});
-		System.out.println(listMembers.getModel().getSize());
 		scrollPaneMembers.setViewportView(listMembers);
 		listMembers.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 		scrollPaneChat = new JScrollPane();
@@ -183,7 +185,7 @@ public class Client extends JFrame {
 		JLabel lblPort = new JLabel("Port:");
 		JLabel lblPort2 = new JLabel(Integer.toString(mySocket.getPort()));
 		JLabel lblMembers = new JLabel("Members: ");
-		JLabel lblMembers2 = new JLabel(Integer.toString(listMembers.getModel().getSize()-1));
+		lblMembers2 = new JLabel(Integer.toString(listMembers.getModel().getSize()-1));
 		
 		pnlSidebar = new JPanel();
 		GroupLayout gl_pnlSidebar = new GroupLayout(pnlSidebar);
@@ -317,12 +319,15 @@ public class Client extends JFrame {
 						String msg;  
 						msg = input.readLine();
 						if (msg.startsWith(COMMAND_MESSAGE)) { // Append message to respective text area
+							
 							System.out.println("msg from server: " + msg);
 							msg = msg.substring(3);
-							msg = listMembers.getModel().getElementAt(Integer.parseInt(msg.substring(0, msg.indexOf("n")))) + ": " + msg;
+							msg = listMembers.getModel().getElementAt(Integer.parseInt(msg.substring(0, msg.indexOf("n")))) + ": " + msg.substring(msg.indexOf("n") + 1);
 							txtArea.get(0).append("\n" + msg);
 							System.out.println("msg to general: " + msg);
+							
 						}else if (msg.equals(COMMAND_QUIT)) { // Server shut down
+							
 							running = false;
 							try {
 								input.close();
@@ -333,7 +338,9 @@ public class Client extends JFrame {
 							}
 							JOptionPane.showMessageDialog(null, "Server has been shut down", "Server Down", JOptionPane.ERROR_MESSAGE);
 							System.exit(0);
+							
 						}else if (msg.startsWith(NEW_USER_COMMAND)){ // New user has connected; Add their name to list
+							
 							msg = msg.substring(3);
 							if(firstCNU) { // If user has just connected, send full member list
 								ArrayList <String> list = new ArrayList <String> ();
@@ -346,18 +353,51 @@ public class Client extends JFrame {
 								list.add(msg);
 								txtArea.add(new JTextArea(""));
 								String [] tmp = list.toArray(new String [list.size()]);
+								System.out.println("Old List; Size:" + listMembers.getModel().getSize());
 								listMembers =  new JList(tmp);
+								System.out.println("new user; Size:" + listMembers.getModel().getSize());
+								scrollPaneMembers.setViewportView(listMembers);
+								System.out.println("updated list set to viewport");
+
 								userNum = tmp.length -1;
+								listMembers.addListSelectionListener(new ListSelectionListener() {
+									public void valueChanged(ListSelectionEvent arg0) {
+										if (!listMembers.getValueIsAdjusting()) {
+											if (listMembers.getSelectedIndex() != userNum) {
+												channelIndex = listMembers.getSelectedIndex();
+												scrollPaneChat.setViewportView(txtArea.get(channelIndex));
+												lblTitle.setText((String) listMembers.getSelectedValue());
+											} // End if
+										} // End if
+									}
+								});
+								
 							}else { // Else add 1 new member to bottom of list
 								String [] tmp = new String [listMembers.getModel().getSize() + 1];
 								for (int i = 0; i < listMembers.getModel().getSize(); i++) {
 									tmp[i] = listMembers.getModel().getElementAt(i);
 								} // End for loop
 								tmp[tmp.length - 1] = msg;
-								listMembers = new JList(tmp);
 								txtArea.add(new JTextArea(""));	
+								listMembers = new JList(tmp);
+								scrollPaneMembers.setViewportView(listMembers);
+								lblMembers2.setText("" + (listMembers.getModel().getSize() - 1));
+								listMembers.addListSelectionListener(new ListSelectionListener() {
+									public void valueChanged(ListSelectionEvent arg0) {
+										if (!listMembers.getValueIsAdjusting()) {
+											if (listMembers.getSelectedIndex() != userNum) {
+												channelIndex = listMembers.getSelectedIndex();
+												scrollPaneChat.setViewportView(txtArea.get(channelIndex));
+												lblTitle.setText((String) listMembers.getSelectedValue());
+											} // End if
+										} // End if
+									}
+								});
+
 							} // End if
+							
 						}else if (msg.startsWith(COMMAND_USER_LEAVE)){ // User at index has disconnected, remove them from list
+							
 							int index = Integer.parseInt(msg.substring(3)); // Get index of left user
 							txtArea.remove(index);// Remove user's chat box from txtArea ArrayList
 							String [] tmp = new String[listMembers.getModel().getSize() - 1];
@@ -366,11 +406,31 @@ public class Client extends JFrame {
 									tmp[i] = listMembers.getModel().getElementAt(i);
 								} // End if
 							} // End for loop
+							
 						}else if (msg.startsWith(COMMAND_PM)){
+							
 							System.out.println("msg from server: " + msg);
 							msg = msg.substring(3);
 							int index = Integer.parseInt(msg.substring(msg.indexOf("n")));
 							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + msg.substring(msg.indexOf("n") + 1));
+							
+						}else if (msg.startsWith(SERVER_MSG)){
+							
+							txtArea.get(0).append("\n" + msg.substring(3));
+							
+						}else if (msg.startsWith(KICK_COMMAND)){
+							
+							running = false;
+							try {
+								input.close();
+								output.close();
+								mySocket.close();
+							}catch(Exception e) {
+								System.out.println("Failed to close");
+							}
+							JOptionPane.showMessageDialog(null, "You Have Been Kicked", "Kicked From Server", JOptionPane.ERROR_MESSAGE);
+							System.exit(0);
+							
 						} // End if
 					} // End if
 				}catch (IOException e) { 
