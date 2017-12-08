@@ -42,6 +42,7 @@ public class Client extends JFrame {
 	private JButton btnSend;
 	private JButton btnDisconnect;
 	private JLabel lblChatList;
+	private JLabel lblMembers2;
 	private JScrollPane scrollPaneMembers;
 	private JList <String> listMembers;
 	private ArrayList <JTextArea> txtArea;
@@ -55,14 +56,13 @@ public class Client extends JFrame {
 	private int userNum;
 	private int channelIndex;
 	private static final String COMMAND_START = "svn";
-	private static final String NEW_USER_COMMAND = "cnu";
 	private static final String COMMAND_QUIT = "svt";
-	private static final String COMMAND_USER_LEAVE = "cul";
 	private static final String COMMAND_MESSAGE = "msg";
 	private static final String COMMAND_PM = "pmg";
 	private static final String SERVER_MSG = "smg";
 	private static final String KICK_COMMAND = "kck";
-	private JLabel lblMembers2;
+	private static final String PREVIOUS_CHAT = "pvc";
+	private static final String UPDATE_USER_CMD = "upd";
 
 	/*
 	 * Client
@@ -82,8 +82,7 @@ public class Client extends JFrame {
 		running = true;
 		Thread listen = new Thread(new MessageReciever()); // Start listening for messages from the server
 		listen.start();
-//		(new Thread(new ChatHistory())).start(); // Get chat history for general chat from the server
-//		(new Thread(new ChatLimiter())).start(); // Limit all chat boxes to 5000 characters
+		(new Thread(new ChatLimiter())).start(); // Limit all chat boxes to 5000 characters
 	} // End Client constructor
 
 	/**
@@ -93,22 +92,22 @@ public class Client extends JFrame {
 	 * @returns none
 	 */
 	private void createEvents() {
-		btnSend.addActionListener(new ActionListener() {
+		btnSend.addActionListener(new ActionListener() { // Send message action listener
 			public void actionPerformed(ActionEvent arg0) {
 				if (!(txtAreaMessage.getText()).equals("")) { // Only send message if there is text inside the text area
-					output.println(COMMAND_MESSAGE + channelIndex + "n" + txtAreaMessage.getText());
+					output.println(COMMAND_MESSAGE + channelIndex + "n" + txtAreaMessage.getText()); // Send message to server
 					output.flush();
-					txtAreaMessage.setText("");
+					txtAreaMessage.setText(""); // Void the message area
 				} // End if
 			} // End actionPerformed method
 		});
-		listMembers.addListSelectionListener(new ListSelectionListener() {
+		listMembers.addListSelectionListener(new ListSelectionListener() { // Member list action listener
 			public void valueChanged(ListSelectionEvent arg0) {
-				if (!listMembers.getValueIsAdjusting()) {
-					if (listMembers.getSelectedIndex() != userNum) {
-						channelIndex = listMembers.getSelectedIndex();
-						scrollPaneChat.setViewportView(txtArea.get(channelIndex));
-						lblTitle.setText(listMembers.getSelectedValue());
+				if (!listMembers.getValueIsAdjusting()) { // Only run when user is not adjusting selection
+					if (listMembers.getSelectedIndex() != userNum) { // Do nothing if user selected themselves; THEY CAN'T TALK TO THEMSELVES
+						channelIndex = listMembers.getSelectedIndex(); // Change the channel index for the user
+						scrollPaneChat.setViewportView(txtArea.get(channelIndex)); // Set the viewport to the corresponding text area
+						lblTitle.setText(listMembers.getSelectedValue()); // Set title to member
 					} // End if
 				} // End if
 			}
@@ -117,23 +116,23 @@ public class Client extends JFrame {
 			public void actionPerformed(ActionEvent arg0) {
 				output.println(COMMAND_QUIT);
 				output.flush();
-				running = false;
-				try {
+				running = false; // Stop running message listener thread
+				try { // Close reader, writer and socket
 					input.close();
 					output.close();
 					mySocket.close();
 				}catch(Exception e) {
 					System.out.println("Failed to close");
 				}
-				System.exit(0);
+				System.exit(0); // Shut down
 			}
 		});
 		this.addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent event) {
 				output.println(COMMAND_QUIT);
 				output.flush();
-				running = false;
-				try {
+				running = false; // Stop running message listener thread
+				try { // Close reader, writer and socket
 					input.close();
 					output.close();
 					mySocket.close();
@@ -157,7 +156,7 @@ public class Client extends JFrame {
 		this.setLocationRelativeTo(null);
 		this.setVisible(true);
 		this.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-		
+
 		lblTitle = new JLabel("General Chat");
 		lblTitle.setFont(new Font("Arial", Font.PLAIN, 20));
 		lblTitle.setHorizontalAlignment(SwingConstants.CENTER);
@@ -170,7 +169,7 @@ public class Client extends JFrame {
 		btnSend.setFont(new Font("Arial Black", Font.PLAIN, 16));  
 		btnDisconnect = new JButton("Disconnect");
 		btnDisconnect.setFont(new Font("Arial", Font.PLAIN, 12));
-		
+
 		scrollPaneMembers = new JScrollPane();
 		scrollPaneMembers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		listMembers = new JList(new String[] {"Gen"});
@@ -186,7 +185,7 @@ public class Client extends JFrame {
 		JLabel lblPort2 = new JLabel(Integer.toString(mySocket.getPort()));
 		JLabel lblMembers = new JLabel("Members: ");
 		lblMembers2 = new JLabel(Integer.toString(listMembers.getModel().getSize()-1));
-		
+
 		pnlSidebar = new JPanel();
 		GroupLayout gl_pnlSidebar = new GroupLayout(pnlSidebar);
 		gl_pnlSidebar.setHorizontalGroup(
@@ -284,7 +283,7 @@ public class Client extends JFrame {
 												.addComponent(btnSend, GroupLayout.PREFERRED_SIZE, 67, GroupLayout.PREFERRED_SIZE))))
 						.addContainerGap())
 				);
-		
+
 		channelIndex = 0;
 		txtArea = new ArrayList <JTextArea>();
 		txtArea.add(new JTextArea(""));
@@ -319,15 +318,15 @@ public class Client extends JFrame {
 						String msg;  
 						msg = input.readLine();
 						if (msg.startsWith(COMMAND_MESSAGE)) { // Append message to respective text area
-							
+
 							System.out.println("msg from server: " + msg);
 							msg = msg.substring(3);
 							msg = listMembers.getModel().getElementAt(Integer.parseInt(msg.substring(0, msg.indexOf("n")))) + ": " + msg.substring(msg.indexOf("n") + 1);
-							txtArea.get(0).append("\n" + msg);
+							txtArea.get(0).append((char)10 + msg);
 							System.out.println("msg to general: " + msg);
-							
+
 						}else if (msg.equals(COMMAND_QUIT)) { // Server shut down
-							
+
 							running = false;
 							try {
 								input.close();
@@ -338,88 +337,20 @@ public class Client extends JFrame {
 							}
 							JOptionPane.showMessageDialog(null, "Server has been shut down", "Server Down", JOptionPane.ERROR_MESSAGE);
 							System.exit(0);
-							
-						}else if (msg.startsWith(NEW_USER_COMMAND)){ // New user has connected; Add their name to list
-							
-							msg = msg.substring(3);
-							if(firstCNU) { // If user has just connected, send full member list
-								ArrayList <String> list = new ArrayList <String> ();
-								list.add("General");
-								while(msg.indexOf(",") != -1) { // Loop through to get all clients
-									txtArea.add(new JTextArea(""));
-									list.add(msg.substring(0, msg.indexOf(",")));
-									msg = msg.substring(msg.indexOf(",") + 1);
-								} // End while loop
-								list.add(msg);
-								txtArea.add(new JTextArea(""));
-								String [] tmp = list.toArray(new String [list.size()]);
-								System.out.println("Old List; Size:" + listMembers.getModel().getSize());
-								listMembers =  new JList(tmp);
-								System.out.println("new user; Size:" + listMembers.getModel().getSize());
-								scrollPaneMembers.setViewportView(listMembers);
-								System.out.println("updated list set to viewport");
 
-								userNum = tmp.length -1;
-								listMembers.addListSelectionListener(new ListSelectionListener() {
-									public void valueChanged(ListSelectionEvent arg0) {
-										if (!listMembers.getValueIsAdjusting()) {
-											if (listMembers.getSelectedIndex() != userNum) {
-												channelIndex = listMembers.getSelectedIndex();
-												scrollPaneChat.setViewportView(txtArea.get(channelIndex));
-												lblTitle.setText((String) listMembers.getSelectedValue());
-											} // End if
-										} // End if
-									}
-								});
-								
-							}else { // Else add 1 new member to bottom of list
-								String [] tmp = new String [listMembers.getModel().getSize() + 1];
-								for (int i = 0; i < listMembers.getModel().getSize(); i++) {
-									tmp[i] = listMembers.getModel().getElementAt(i);
-								} // End for loop
-								tmp[tmp.length - 1] = msg;
-								txtArea.add(new JTextArea(""));	
-								listMembers = new JList(tmp);
-								scrollPaneMembers.setViewportView(listMembers);
-								lblMembers2.setText("" + (listMembers.getModel().getSize() - 1));
-								listMembers.addListSelectionListener(new ListSelectionListener() {
-									public void valueChanged(ListSelectionEvent arg0) {
-										if (!listMembers.getValueIsAdjusting()) {
-											if (listMembers.getSelectedIndex() != userNum) {
-												channelIndex = listMembers.getSelectedIndex();
-												scrollPaneChat.setViewportView(txtArea.get(channelIndex));
-												lblTitle.setText((String) listMembers.getSelectedValue());
-											} // End if
-										} // End if
-									}
-								});
-
-							} // End if
-							
-						}else if (msg.startsWith(COMMAND_USER_LEAVE)){ // User at index has disconnected, remove them from list
-							
-							int index = Integer.parseInt(msg.substring(3)); // Get index of left user
-							txtArea.remove(index);// Remove user's chat box from txtArea ArrayList
-							String [] tmp = new String[listMembers.getModel().getSize() - 1];
-							for (int i = 0; i < listMembers.getModel().getSize(); i++) {
-								if (i != index) {
-									tmp[i] = listMembers.getModel().getElementAt(i);
-								} // End if
-							} // End for loop
-							
 						}else if (msg.startsWith(COMMAND_PM)){
-							
+
 							System.out.println("msg from server: " + msg);
 							msg = msg.substring(3);
 							int index = Integer.parseInt(msg.substring(msg.indexOf("n")));
 							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + msg.substring(msg.indexOf("n") + 1));
-							
+
 						}else if (msg.startsWith(SERVER_MSG)){
-							
-							txtArea.get(0).append("\n" + msg.substring(3));
-							
+
+							txtArea.get(0).append((char)10 + msg.substring(3));
+
 						}else if (msg.startsWith(KICK_COMMAND)){
-							
+
 							running = false;
 							try {
 								input.close();
@@ -430,6 +361,54 @@ public class Client extends JFrame {
 							}
 							JOptionPane.showMessageDialog(null, "You Have Been Kicked", "Kicked From Server", JOptionPane.ERROR_MESSAGE);
 							System.exit(0);
+							
+						}else if (msg.startsWith(PREVIOUS_CHAT)) {
+							msg = msg.substring(3);
+							while (!msg.endsWith(PREVIOUS_CHAT)) {
+								txtArea.get(0).append("\n" + msg);
+								System.out.println("msg from server: " + msg);
+								msg = input.readLine();
+							} // End while loop
+							txtArea.get(0).append("\n" + msg.substring(0, msg.length()-3));
+							System.out.println("msg from server: " + msg);
+							
+						}else if (msg.startsWith(UPDATE_USER_CMD)){
+							
+							msg = msg.substring(3);
+							ArrayList <String> list = new ArrayList <String> ();
+							list.add("General");
+							JTextArea tmpTA = txtArea.get(0);
+							txtArea.clear();
+							txtArea.add(tmpTA);
+							
+							while(msg.indexOf(",") != -1) { // Loop through to get all clients
+								txtArea.add(new JTextArea(""));
+								list.add(msg.substring(0, msg.indexOf(",")));
+								msg = msg.substring(msg.indexOf(",") + 1);
+							} // End while loop
+							list.add(msg);
+							txtArea.add(new JTextArea(""));
+							String [] tmp = list.toArray(new String [list.size()]);
+							listMembers = new JList(tmp);
+							scrollPaneMembers.setViewportView(listMembers);
+							if (firstCNU) {
+								userNum = tmp.length -1;
+								firstCNU = false;
+							} // End if
+							// Add action listener to member list
+							listMembers.addListSelectionListener(new ListSelectionListener() {
+								public void valueChanged(ListSelectionEvent arg0) {
+									if (!listMembers.getValueIsAdjusting()) {
+										if (listMembers.getSelectedIndex() != userNum) {
+											channelIndex = listMembers.getSelectedIndex();
+											scrollPaneChat.setViewportView(txtArea.get(channelIndex));
+											lblTitle.setText((String) listMembers.getSelectedValue());
+											System.out.println("usernum: " + name + " " + userNum);
+										} // End if
+									} // End if
+								}
+							});
+							lblMembers2.setText("" + (listMembers.getModel().getSize() - 1)); // Update member count
 							
 						} // End if
 					} // End if
@@ -442,35 +421,39 @@ public class Client extends JFrame {
 	} // End MessageReciever class
 
 	/**
-	 * ChatHistory.java
-	 * Inner class used to receive chat history for general chat
-	 * Aaron Ng
-	 * Dec 1, 2017
+	 * ChatLimiter.java
+	 * Limits chat boxes to 5000 characters
+	 * @author Aaron Ng
+	 * @date Dec 7, 2017
+	 *
 	 */
-	class ChatHistory implements Runnable{
-		boolean going = true;
-		ChatHistory(){} // End ChatHistory Constructor
+	class ChatLimiter implements Runnable{
+		ChatLimiter(){}
 		/**
 		 * run
-		 * Method for listening to received messages
+		 * Method for deleting old messages from chat boxes
 		 * @param none
 		 * @returns none
 		 */
 		public void run() {
-			while(going) {
+			while (running) {
+				for (int i = 0; i < txtArea.size(); i++) {
+					try {
+						while (txtArea.get(i).getText().length() > 5000) {
+							txtArea.get(i).setText(txtArea.get(i).getText().substring(txtArea.get(i).getText().indexOf((char)10)));
+						} // End while loop
+					}catch (NullPointerException e) {
+						System.out.println("index: " + i);
+						e.printStackTrace();
+					}
+				} // End for loop
 				try {
-					if (input.ready()) {
-						String msg;          
-						msg = input.readLine();
-						txtArea.get(0).setText(msg);
-						System.out.println("msg from server: " + msg);
-						going = false;
-					} // End if
-				}catch (IOException e) { 
-					System.out.println("Failed to receive msg from the server");
-					e.printStackTrace();
-				} // End try catch statement
+					Thread.sleep(10000);
+				}catch(InterruptedException e) {
+					System.out.println("failed to pause 10 sec");
+				}
 			} // End while loop
 		} // End run method
-	} // End ChatHistory class
+	} // End ChatLimiter class
+
 } // End Client class
