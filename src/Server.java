@@ -22,11 +22,11 @@ class Server {// open main class
     private static final String COMMAND_QUIT = "svt"; // command for user disconnect
     private static final String COMMAND_NEW = "svn";// command used when user first joins the server
     private static final String COMMAND_MSG = "msg"; // command when user wants to send a msg to another user
-    private static final String NEW_USER_COMMAND = "cnu"; // command that will be sent to all users stating that there is a new user connected
+    private static final String UPDATE_USER_COMMAND = "upd"; // command that will be sent to all users stating that there is a new user connected
     private static final String PRIVATE_MSG_COMMAND = "pmg"; // private message command
-    private static final String USER_LEAVE_MSG = "cul"; // command that will be sent to users when a user leaves
     private static final String SERVER_MSG = "smg";
     private static final String KICK_COMMAND = "kck";
+    private static final String PREVIOUS_CHAT = "pvc";
     private static Gui gui; // GUI
     volatile static String serverIn; // string that will hold the console input
     private static StringBuilder previousChat;
@@ -44,8 +44,8 @@ class Server {// open main class
         Thread console = new Thread(new consoleThread());
         console.start();
         // get chat history
-        //previousChat = new StringBuilder();
-        //previousChat.append(getPrevChat());
+        previousChat = new StringBuilder();
+        previousChat.append(getPrevChat());
         // start the server
         new Server().go(); //start the server
     }
@@ -53,23 +53,34 @@ class Server {// open main class
     private static StringBuilder getPrevChat() throws IOException {
         StringBuilder prevChat = new StringBuilder();
         BufferedReader input = new BufferedReader(new FileReader("Chat History.txt"));
-        while (prevChat.append(input.readLine()) != null) {
+        String line = input.readLine();
+        boolean first = true;
+        while (line != null) {
+            if (!line.isEmpty()) {
+                if (first){
+                    prevChat.append(line);
+                    first = false;
+                }else {
+                    prevChat.append("\n" + line);
+                }
+            }
+            line = input.readLine();
         }
         input.close();
         return prevChat;
     }
 
-    private static void addChat(String msg){
+    private static void addChat(String msg) {
         previousChat.append(msg);
     }
 
     private static void saveChat() throws IOException {
         BufferedWriter output = new BufferedWriter(new FileWriter("Chat History.txt"));
         String chat = previousChat.toString();
-        if(chat.length() > 5000){
-            chat = chat.substring(chat.length()-5000);
+        if (chat.length() > 5000) {
+            chat = chat.substring(chat.length() - 5000);
             int index = chat.indexOf('\n');
-            chat = chat.substring(index+1);
+            chat = chat.substring(index + 1);
         }
         output.write(chat);
         output.close();
@@ -86,11 +97,12 @@ class Server {// open main class
 
         try {
             serverSock = new ServerSocket(5000);  //assigns an port to the server
+            gui.appendToConsole("Port: " + serverSock.getLocalPort());
             //serverSock.setSoTimeout(25000);  //5 second timeout
             while (running) {  //loops to accepts client
                 client = serverSock.accept();  //wait for connection
                 System.out.println("Client connected");
-                gui.appendToConsole("Client Connected");
+                gui.appendToConsole("Client Connected - " + client.getLocalAddress());
                 // create a new user
                 User user = new User();
                 users.add(user); // add user to the list
@@ -130,7 +142,7 @@ class Server {// open main class
          * @param the socket belonging to this client connection
          */
         ConnectionHandler(Socket s, User user) {
-            this.user = user;// set yser
+            this.user = user;// set user
             this.client = s;  //constructor assigns client to this
             try {  //assign all connections to client
                 this.output = new PrintWriter(client.getOutputStream());
@@ -161,13 +173,15 @@ class Server {// open main class
                         System.out.println("msg from client: " + userInput);
 
                         if (userInput.startsWith(COMMAND_QUIT)) {
-                            running = false; //stop receving messages
+                            writeToUsers(SERVER_MSG + user.getName() + " has disconnected",0,0);
+                            running = false; //stop receiving messages
                         } else if (userInput.startsWith(COMMAND_NEW)) {
                             user.setName(userInput.substring(COMMAND_LEN));
                             user.setListNum(connectionHandlers.size());
                             gui.appendToConsole("User " + user.getListNum() + " name set: " + userInput.substring(COMMAND_LEN));
-                            giveUsers();
-                            //write(previousChat.toString());
+                            updateUsers();
+                            writeToUsers(SERVER_MSG + user.getName() + " has connected",0,0);
+                            write(PREVIOUS_CHAT + previousChat.toString()+PREVIOUS_CHAT);
                         } else if (userInput.startsWith(COMMAND_MSG)) {
                             String msg = userInput.substring(COMMAND_LEN);
                             int nIndex = msg.indexOf('n');
@@ -181,7 +195,6 @@ class Server {// open main class
                             } else {
                                 gui.appendToConsole(user.getListNum() + " sent  private msg to " + receiverNum + ": " + msg);
                             }
-
                         } else {
                             output.println("err Command Not Available");
                             output.flush();
@@ -196,32 +209,30 @@ class Server {// open main class
 
             updateUserRemoved();
 
-            sendUserLeft(user.getListNum());
+            updateUsers();
 
             close();
         } // end of run()
 
         private void updateUserRemoved() {
+            gui.appendToConsole(user.getListNum() + "- disconnecting");
             users.remove(user);
+
+            connectionHandlers.remove(this);
 
             for (int i = 0; i < connectionHandlers.size(); i++) {
                 connectionHandlers.get(i).user.setListNum(i);
             }
         }
 
-        private void sendUserLeft(int listNum) {
-            String out = USER_LEAVE_MSG + listNum;
-            writeToUsers(out, 0, listNum);
-        }
-
-        private void giveUsers() {
+        private void updateUsers() {
             StringBuilder string = new StringBuilder();
-
-            string.append(NEW_USER_COMMAND);
+            string.append(UPDATE_USER_COMMAND);
             for (int i = 0; i < connectionHandlers.size(); i++) {
-                string.append(connectionHandlers.get(i).user.getName());
-                if (i != connectionHandlers.size() - 1) {
-                    string.append(',');
+                if (i < connectionHandlers.size()-1){
+                    string.append(connectionHandlers.get(i).user.getName()+",");
+                }else{
+                    string.append(connectionHandlers.get(i).user.getName());
                 }
             }
             writeToUsers(string.toString(), 0, user.getListNum());
@@ -229,7 +240,7 @@ class Server {// open main class
 
         private void writeToUsers(String msg, int receiver, int sender) {
             if (receiver == 0) {
-                if ((!msg.startsWith(USER_LEAVE_MSG)) && (!msg.startsWith(NEW_USER_COMMAND)) && (!msg.startsWith(SERVER_MSG)) && (!msg.startsWith(KICK_COMMAND))) {
+                if ( ( !msg.startsWith(UPDATE_USER_COMMAND) ) && ( !msg.startsWith(SERVER_MSG) ) && ( !msg.startsWith(KICK_COMMAND)) ) {
                     msg = COMMAND_MSG + sender + 'n' + msg;
                 }
                 for (int i = 0; i < connectionHandlers.size(); i++) {
@@ -289,7 +300,11 @@ class Server {// open main class
                         connectionHandlers.get(i).running = false;
                     }
 
-                    //saveChat();
+                    try {
+                        saveChat();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
 
                     try {
                         serverSock.close();
@@ -336,6 +351,11 @@ class Server {// open main class
                 } else if (serverIn.startsWith("list members")) {
                     StringBuilder listOfMembers = new StringBuilder();
 
+                    if (users.size() == 0){
+                        gui.appendToConsole("There are no users online.");
+                        break;
+                    }
+
                     for (int i = 0; i < users.size(); i++) {
                         listOfMembers.append(" " + users.get(i).getListNum() + " - " + users.get(i).getName() + " ");
                         if (i < users.size() - 1) {
@@ -343,6 +363,12 @@ class Server {// open main class
                         }
                     }
                     gui.appendToConsole(listOfMembers.toString());
+                    serverIn = null;
+                } else if (serverIn.startsWith("broadcast")) {
+                    String msg = SERVER_MSG + serverIn.substring(9);
+                    for (int i = 0; i < connectionHandlers.size(); i++) {
+                        connectionHandlers.get(i).write(msg);
+                    }
                     serverIn = null;
                 } else {
                     gui.appendToConsole("This is not a valid command!");
