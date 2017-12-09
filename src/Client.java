@@ -95,6 +95,9 @@ public class Client extends JFrame {
 		btnSend.addActionListener(new ActionListener() { // Send message action listener
 			public void actionPerformed(ActionEvent arg0) {
 				if (!(txtAreaMessage.getText()).equals("")) { // Only send message if there is text inside the text area
+					if (channelIndex != 0) {
+						txtArea.get(channelIndex).append(name + ": " + txtAreaMessage.getText()); // Append to chat box if it is not general chat
+					} // End if
 					output.println(COMMAND_MESSAGE + channelIndex + "n" + txtAreaMessage.getText()); // Send message to server
 					output.flush();
 					txtAreaMessage.setText(""); // Void the message area
@@ -123,7 +126,7 @@ public class Client extends JFrame {
 					mySocket.close();
 				}catch(Exception e) {
 					System.out.println("Failed to close");
-				}
+				} // End try catch statement
 				System.exit(0); // Shut down
 			}
 		});
@@ -138,8 +141,8 @@ public class Client extends JFrame {
 					mySocket.close();
 				}catch(Exception e) {
 					System.out.println("Failed to close");
-				}
-				System.exit(0);
+				} // End try catch statement
+				System.exit(0); // Shut down
 			}
 		});
 	} // End createEvents method
@@ -319,11 +322,11 @@ public class Client extends JFrame {
 						msg = input.readLine();
 						if (msg.startsWith(COMMAND_MESSAGE)) { // Append message to respective text area
 
-							System.out.println("msg from server: " + msg);
+//							System.out.println("msg from server: " + msg); // debug
 							msg = msg.substring(3);
 							msg = listMembers.getModel().getElementAt(Integer.parseInt(msg.substring(0, msg.indexOf("n")))) + ": " + msg.substring(msg.indexOf("n") + 1);
 							txtArea.get(0).append((char)10 + msg);
-							System.out.println("msg to general: " + msg);
+//							System.out.println("msg to general: " + msg); // debug
 
 						}else if (msg.equals(COMMAND_QUIT)) { // Server shut down
 
@@ -340,10 +343,10 @@ public class Client extends JFrame {
 
 						}else if (msg.startsWith(COMMAND_PM)){
 
-							System.out.println("msg from server: " + msg);
+//							System.out.println("msg from server: " + msg); // debug
 							msg = msg.substring(3);
 							int index = Integer.parseInt(msg.substring(0,msg.indexOf("n")));
-							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + msg.substring(msg.indexOf("n") + 1));
+							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + ": " + msg.substring(msg.indexOf("n") + 1));
 
 						}else if (msg.startsWith(SERVER_MSG)){
 
@@ -366,11 +369,11 @@ public class Client extends JFrame {
 							msg = msg.substring(3);
 							while (!msg.endsWith(PREVIOUS_CHAT)) {
 								txtArea.get(0).append("\n" + msg);
-								System.out.println("msg from server: " + msg);
+//								System.out.println("msg from server: " + msg); // debug
 								msg = input.readLine();
 							} // End while loop
 							txtArea.get(0).append("\n" + msg.substring(0, msg.length()-3));
-							System.out.println("msg from server: " + msg);
+//							System.out.println("msg from server: " + msg); // debug
 							
 						}else if (msg.startsWith(UPDATE_USER_CMD)){
 							
@@ -382,15 +385,26 @@ public class Client extends JFrame {
 							txtArea.add(tmpTA);
 							
 							while(msg.indexOf(",") != -1) { // Loop through to get all clients
-								txtArea.add(new JTextArea(""));
+								JTextArea tmpTextArea = new JTextArea("");
+								tmpTextArea.setEditable(false);
+								tmpTextArea.setFont(new Font("Century Gothic", Font.PLAIN, 16));
+								tmpTextArea.setWrapStyleWord(true);
+								tmpTextArea.setLineWrap(true);
+								txtArea.add(tmpTextArea);
 								list.add(msg.substring(0, msg.indexOf(",")));
 								msg = msg.substring(msg.indexOf(",") + 1);
 							} // End while loop
+							JTextArea tmpTextArea = new JTextArea("");
+							tmpTextArea.setEditable(false);
+							tmpTextArea.setFont(new Font("Century Gothic", Font.PLAIN, 16));
+							tmpTextArea.setWrapStyleWord(true);
+							tmpTextArea.setLineWrap(true);
+							txtArea.add(tmpTextArea);
 							list.add(msg);
-							txtArea.add(new JTextArea(""));
 							String [] tmp = list.toArray(new String [list.size()]);
 							listMembers = new JList(tmp);
 							scrollPaneMembers.setViewportView(listMembers);
+							
 							if (firstCNU) {
 								userNum = tmp.length -1;
 								firstCNU = false;
@@ -403,7 +417,6 @@ public class Client extends JFrame {
 											channelIndex = listMembers.getSelectedIndex();
 											scrollPaneChat.setViewportView(txtArea.get(channelIndex));
 											lblTitle.setText((String) listMembers.getSelectedValue());
-											System.out.println("usernum: " + name + " " + userNum);
 										} // End if
 									} // End if
 								}
@@ -443,7 +456,6 @@ public class Client extends JFrame {
 							txtArea.get(i).setText(txtArea.get(i).getText().substring(txtArea.get(i).getText().indexOf((char)10)));
 						} // End while loop
 					}catch (NullPointerException e) {
-						System.out.println("index: " + i);
 						e.printStackTrace();
 					}
 				} // End for loop
