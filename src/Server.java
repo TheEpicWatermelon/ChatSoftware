@@ -250,7 +250,7 @@ class Server {// open main class
                 for (int i = 0; i < connectionHandlers.size(); i++) {
                     String out = PRIVATE_MSG_COMMAND + sender + 'n' + msg;
                     if ((connectionHandlers.get(i).user.getListNum()) == sender || (connectionHandlers.get(i).user.getListNum() == receiver)) {
-                        connectionHandlers.get(i).write(msg);
+                        connectionHandlers.get(i).write(out);
                     }
                 }
             }

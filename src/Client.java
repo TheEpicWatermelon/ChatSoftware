@@ -342,7 +342,7 @@ public class Client extends JFrame {
 
 							System.out.println("msg from server: " + msg);
 							msg = msg.substring(3);
-							int index = Integer.parseInt(msg.substring(msg.indexOf("n")));
+							int index = Integer.parseInt(msg.substring(0,msg.indexOf("n")));
 							txtArea.get(index).append(listMembers.getModel().getElementAt(index) + msg.substring(msg.indexOf("n") + 1));
 
 						}else if (msg.startsWith(SERVER_MSG)){
